@@ -1,0 +1,59 @@
+apiVersion: karpenter.sh/v1alpha5
+kind: Provisioner
+metadata:
+  name: default
+  namespace: karpenter
+spec:
+#Requirements that constrain the parameters of provisioned nodes. 
+#Operators { In, NotIn } are supported to enable including or excluding values
+  requirements:
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values: ["spot"]
+
+  limits:
+    resources:
+      cpu: 1000
+
+  providerRef:
+    name: default
+
+  ttlSecondsAfterEmpty: 30 
+  ttlSecondsUntilExpired: 7776000
+  kubeletConfiguration:
+    systemReserved:
+      cpu: 100m
+      memory: 100Mi
+      ephemeral-storage: 1Gi
+    kubeReserved:
+      cpu: 200m
+      memory: 100Mi
+      ephemeral-storage: 3Gi
+    evictionHard:
+      memory.available: 5%
+      nodefs.available: 10%
+      nodefs.inodesFree: 10%
+    evictionSoft:
+      memory.available: 500Mi
+      nodefs.available: 15%
+      nodefs.inodesFree: 15%
+    evictionSoftGracePeriod:
+      memory.available: 1m
+      nodefs.available: 1m30s
+      nodefs.inodesFree: 2m
+    evictionMaxPodGracePeriod: 60
+
+---
+apiVersion: karpenter.k8s.aws/v1alpha1
+kind: AWSNodeTemplate
+metadata:
+  name: default
+spec:
+  instanceProfile: eks-78c50ea0-58c8-f216-1740-f56ad147ec43
+  subnetSelector:
+    Name: "test-subnet-private-*"
+  securityGroupSelector:
+    aws:eks:cluster-name: test-cluster
+  tags:
+    karpenter.sh/discovery: test-cluster
+  amiFamily: "Bottlerocket"

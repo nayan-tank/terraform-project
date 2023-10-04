@@ -1,0 +1,110 @@
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+      # slack_api_url: https://hooks.slack.com/services/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
+    inhibit_rules:
+    - equal:
+      - namespace
+      - alertname
+      source_match:
+        severity: critical
+      target_match_re:
+        severity: warning|info
+    - equal:
+      - namespace
+      - alertname
+      source_match:
+        severity: warning
+      target_match_re:
+        severity: info
+    receivers:
+    - name: Default
+    - name: Watchdog
+    - name: Critical
+    - name: 'slack-notifications'
+      # slack_configs:
+      #   - channel: '#prometheus-alert'
+      #     send_resolved: true
+    route:
+      group_by:
+      - namespace
+      group_interval: 5m
+      group_wait: 30s
+      receiver: slack-notifications
+      repeat_interval: 12h
+      routes:
+      - match:
+          alertname: Watchdog
+        receiver: Watchdog
+      - match:
+          severity: critical
+        receiver: slack-notifications
+    templates:
+    - '/etc/alertmanager/config/*.tmpl'
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - alertmanager.dev.net
+    paths:
+    - /
+
+    pathType: ImplementationSpecific
+
+  alertmanagerSpec:
+    externalUrl: https://alertmanager.dev.net
+
+grafana:
+  adminPassword: 1TI5YsWI66mvN9K2
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.dev.net
+    pathType: ImplementationSpecific
+
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: gp3-single-az
+    accessModes:
+    - ReadWriteOnce
+    size: 2Gi
+
+prometheus:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/auth-realm: Authentication Required - whatever
+    nginx.ingress.kubernetes.io/auth-secret: prometheus-server-basic-auth
+    nginx.ingress.kubernetes.io/auth-secret-type: auth-map
+    nginx.ingress.kubernetes.io/auth-type: basic
+  tls:
+    - hosts:
+      - prometheus.dev.net
+      secretName: prometheus-server-tls
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - prometheus.dev.net
+    paths:
+    - /
+
+    pathType: ImplementationSpecific
+  
+  prometheusSpec:
+    externalUrl: https://promethues.dev.net
+
+    ## Define which Nodes the Pods are scheduled on.
+    ## ref: https://kubernetes.io/docs/user-guide/node-selection/
+
+    storageSpec:
+     volumeClaimTemplate:
+       spec:
+         storageClassName: gp3-single-az
+         accessModes: ["ReadWriteOnce"]
+         resources:
+           requests:
+             storage: 20Gi

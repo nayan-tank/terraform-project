@@ -1,0 +1,4 @@
+terraform init -backend-config="dev_env_backend.conf" 
+terraform plan -out=tfplan -var-file="dev_env.tfvars" 
+terraform apply -no-color -input=false tfplan 
+terraform destroy -auto-approve -var-file="dev_env.tfvars"
